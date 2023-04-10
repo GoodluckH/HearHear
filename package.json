@@ -18,9 +18,12 @@
   },
   "homepage": "https://github.com/GoodluckH/HearHear#readme",
   "dependencies": {
-    "discord.js": "^14.9.0"
+    "@discordjs/voice": "^0.16.0",
+    "discord.js": "^14.9.0",
+    "dotenv": "^16.0.3"
   },
   "devDependencies": {
-    "eslint": "^8.38.0"
+    "eslint": "^8.38.0",
+    "prettier": "^2.8.7"
   }
 }
