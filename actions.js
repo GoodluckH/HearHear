@@ -5,8 +5,12 @@ const {
 	VoiceConnection,
 	VoiceConnectionStatus,
 } = require('@discordjs/voice');
+const { createWriteStream } = require('node:fs');
+const { pipeline } = require('node:stream');
+const { EndBehaviorType, VoiceReceiver } = require('@discordjs/voice');
+const prism = require('prism-media');
 
-async function join(voiceState, recordable, client, connection) {
+async function join(voiceState, speakers, client, connection) {
 	if (!connection) {
 		if (
 			voiceState.member instanceof GuildMember &&
@@ -24,54 +28,68 @@ async function join(voiceState, recordable, client, connection) {
 				adapterCreator: channel.guild.voiceAdapterCreator,
 			});
 		} else {
-			// await interaction.followUp(
-			// 	'Join a voice channel and then try that again!',
-			// );
 			return;
 		}
 	}
 
 	try {
-		await entersState(connection, VoiceConnectionStatus.Ready, 20e3);
-		const receiver = connection.receiver;
-
-		receiver.speaking.on('start', (userId) => {
-			if (recordable.has(userId)) {
-				console.log('start', userId);
-				// createListeningStream(
-				// 	receiver,
-				// 	userId,
-				// 	client.users.cache.get(userId),
-				// );
-			}
-		});
+		await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
+		return connection;
 	} catch (error) {
-		console.warn(error);
-		// await interaction.followUp(
-		// 	'Failed to join voice channel within 20 seconds, please try again later!',
-		// );
+		connection.destroy();
+		throw error;
 	}
-
-	// await interaction.followUp('Ready!');
 }
 
-async function leave(voiceState, recordable, _client, connection) {
+async function leave(voiceState, speakers, _client, connection) {
 	if (connection) {
 		connection.destroy();
-		recordable.clear();
-		// await interaction.reply({
-		// 	ephemeral: true,
-		// 	content: 'Left the channel!',
-		// });
-	} else {
-		// await interaction.reply({
-		// 	ephemeral: true,
-		// 	content: 'Not playing in this server!',
-		// });
+		speakers.clear();
 	}
+}
+
+function getDisplayName(userId, user) {
+	return user ? `${user.username}_${user.discriminator}` : userId;
+}
+
+function createListeningStream(speakers, receiver, userId, user) {
+	const opusStream = receiver.subscribe(userId, {
+		end: {
+			behavior: EndBehaviorType.AfterSilence,
+			duration: 1000,
+		},
+	});
+
+	const decoder = new prism.opus.Decoder({
+		frameSize: 960,
+		channels: 2,
+		rate: 48000,
+	});
+
+	const filename = `./recordings/${Date.now()}-${getDisplayName(
+		userId,
+		user,
+	)}.pcm`;
+
+	const out = createWriteStream(filename);
+	// save the stream to a file so we can play it back later
+
+	console.log(`👂 Started recording ${filename}`);
+
+	pipeline(opusStream, decoder, out, (err) => {
+		if (err) {
+			console.warn(
+				`❌ Error recording file ${filename} - ${err.message}`,
+			);
+		} else {
+			console.log(`✅ Recorded ${filename}`);
+		}
+	});
+	speakers.delete(userId);
 }
 
 module.exports = {
 	join,
 	leave,
+	createListeningStream,
 };

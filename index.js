@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 const { getVoiceConnection } = require('@discordjs/voice');
-const { join, leave } = require('./actions.js');
+const { join, leave, createListeningStream } = require('./actions.js');
 
 require('dotenv').config();
 const token = process.env.BOT_TOKEN;
@@ -34,10 +34,14 @@ client.once(Events.ClientReady, (c) => {
 	console.log(`Ready! Logged in as ${c.user.tag}`);
 });
 
-const recordable = new Set();
 let subscribed_channel_id = null;
+const speakers = new Set();
 
 client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
+	// get the current speaking users
+	// if the user is not in the channel, remove them from the speakers
+	// list
+
 	if (subscribed_channel_id === null) {
 		return;
 	}
@@ -50,26 +54,61 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
 	) {
 		await leave(
 			newState,
-			recordable,
+			speakers,
 			client,
 			getVoiceConnection(oldState.guild.id),
 		);
 		return;
 	}
 
-	if (
-		oldState.channelId === newState.channelId ||
-		newState.channelId !== subscribed_channel_id
-	) {
+	if (newState.channelId !== subscribed_channel_id) {
 		return;
 	}
+	const connection = getVoiceConnection(newState.guild.id);
+	if (!connection) {
+		await join(newState, speakers, client, connection);
+	} else if (
+		!speakers.has(newState.member.user.id) &&
+		newState.member.user.id !== client.user.id &&
+		connection.receiver.speaking.users.has(ewState.member.user.id)
+	) {
+		console.log('hello');
+		speakers.add(newState.member.user.id);
 
-	await join(
-		newState,
-		recordable,
-		client,
-		getVoiceConnection(newState.guild.id),
-	);
+		receiver.speaking.on('start', (userId) => {
+			createListeningStream(
+				speakers,
+				connection.receiver,
+				userId,
+				client.users.cache.get(userId),
+			);
+		});
+
+		// try {
+		// 	console.log('Joining voice channel');
+		// 	await entersState(connection, VoiceConnectionStatus.Ready, 20e3);
+		// 	const receiver = connection.receiver;
+		// 	receiver.speaking.on('start', (userId) => {
+		// 		// see if the user is already being recorded
+		// 		if (speakers.has(userId)) {
+		// 			return;
+		// 		}
+		// 		speakers.add(userId);
+		// 		console.log('start', userId);
+		// 		createListeningStream(
+		// 			receiver,
+		// 			userId,
+		// 			client.users.cache.get(userId),
+		// 		);
+		// 	});
+		// 	receiver.speaking.on('end', (userId) => {
+		// 		console.log('stop', userId);
+		// 		speakers.delete(userId);
+		// 	});
+		// } catch (error) {
+		// 	console.warn(error);
+		// }
+	}
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
