@@ -23,7 +23,7 @@
 		// Emit
 		"declaration": true,
 		"importHelpers": true,
-		"verbatimModuleSyntax": true,
+		"verbatimModuleSyntax": false,
 		"inlineSources": true,
 		"newLine": "lf",
 		"noEmitHelpers": true,

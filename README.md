@@ -17,3 +17,12 @@ $ nano config.json
 # Start the bot!
 $ npm start
 ```
+
+## Notes
+
+The stream subscription will automatically end when user is not speaking
+for more than 300 ms. This is to prevent the bot from recording empty
+audio files.
+
+To prevent the buffer from growing too large, a timer is used to end and
+re-record the stream every 30 seconds.

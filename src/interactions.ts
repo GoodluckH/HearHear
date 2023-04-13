@@ -1,13 +1,13 @@
 import {
-  entersState,
+  // entersState,
   joinVoiceChannel,
   VoiceConnection,
-  VoiceConnectionStatus,
+  // VoiceConnectionStatus,
 } from "@discordjs/voice";
-import { Client, CommandInteraction, GuildMember, Snowflake } from "discord.js";
+import { Client, CommandInteraction, GuildMember } from "discord.js";
 import { createListeningStream } from "./createListeningStream";
 
-async function join(
+async function start(
   interaction: CommandInteraction,
   client: Client,
   connection?: VoiceConnection
@@ -24,7 +24,6 @@ async function join(
         guildId: channel.guild.id,
         selfDeaf: false,
         selfMute: true,
-        // @ts-expect-error Currently voice is built in mind with API v10 whereas discord.js v13 uses API v9.
         adapterCreator: channel.guild.voiceAdapterCreator,
       });
     } else {
@@ -36,7 +35,7 @@ async function join(
   }
 
   try {
-    await entersState(connection, VoiceConnectionStatus.Ready, 20e3);
+    // await entersState(connection, VoiceConnectionStatus.Ready, 20e3);
     const receiver = connection.receiver;
 
     receiver.speaking.on("start", (userId) => {
@@ -53,28 +52,6 @@ async function join(
   await interaction.followUp("Ready!");
 }
 
-async function record(
-  interaction: CommandInteraction,
-  client: Client,
-  connection?: VoiceConnection
-) {
-  if (connection) {
-    const userId = interaction.options.get("speaker")!.value! as Snowflake;
-
-    const receiver = connection.receiver;
-    if (connection.receiver.speaking.users.has(userId)) {
-      createListeningStream(receiver, userId, client.users.cache.get(userId));
-    }
-
-    await interaction.reply({ ephemeral: true, content: "Listening!" });
-  } else {
-    await interaction.reply({
-      ephemeral: true,
-      content: "Join a voice channel and then try that again!",
-    });
-  }
-}
-
 async function leave(
   interaction: CommandInteraction,
   _client: Client,
@@ -85,6 +62,12 @@ async function leave(
       subscription.emit("end");
     });
     connection.destroy();
+
+    await interaction.reply({
+      ephemeral: true,
+      content: "Uploading the audio files to S3 buckets",
+    });
+
     await interaction.reply({ ephemeral: true, content: "Left the channel!" });
   } else {
     await interaction.reply({
@@ -102,6 +85,5 @@ export const interactionHandlers = new Map<
     connection?: VoiceConnection
   ) => Promise<void>
 >();
-interactionHandlers.set("join", join);
-interactionHandlers.set("record", record);
+interactionHandlers.set("start", start);
 interactionHandlers.set("leave", leave);

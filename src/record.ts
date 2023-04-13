@@ -13,15 +13,15 @@ export function createListeningStream(
   userId: string,
   user?: User
 ) {
-  if (receiver.subscriptions.has(userId)) {
-    console.log(`Already recording ${userId}`);
+  if (receiver.subscriptions.has(userId) || !user) {
+    console.log("🤷 Already recording", userId);
     return;
   }
 
   const opusStream = receiver.subscribe(userId, {
     end: {
       behavior: EndBehaviorType.AfterSilence,
-      duration: 1000,
+      duration: 300,
     },
   });
 
@@ -44,7 +44,16 @@ export function createListeningStream(
 
   console.log(`👂 Started recording ${filename}`);
 
+  const timeout = setTimeout(() => {
+    console.log(`🕒 Timeout reached for ${filename}`);
+    opusStream.emit("end");
+    receiver.subscriptions.delete(userId);
+    createListeningStream(receiver, userId, user);
+  }, 30_000);
+
   pipeline(opusStream, oggStream, out, (err) => {
+    clearTimeout(timeout);
+
     if (err) {
       out.close();
       console.warn(`❌ Error recording file ${filename} - ${err.message}`);

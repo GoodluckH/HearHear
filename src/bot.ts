@@ -1,11 +1,14 @@
 import { getVoiceConnection } from "@discordjs/voice";
 import { GatewayIntentBits } from "discord-api-types/v10";
-import { Interaction, Constants, Client } from "discord.js";
+import { Interaction, Events, Client } from "discord.js";
 import { deploy } from "./deploy";
 import { interactionHandlers } from "./interactions";
+// dotenv
+import { config } from "dotenv";
+config();
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
-const { token } = require("../config.json") as { token: string };
+const token = process.env.TOKEN;
+console.log(token);
 
 const client = new Client({
   intents: [
@@ -15,11 +18,9 @@ const client = new Client({
   ],
 });
 
-const { Events } = Constants;
+client.on(Events.ClientReady, () => console.log("Ready!"));
 
-client.on(Events.CLIENT_READY, () => console.log("Ready!"));
-
-client.on(Events.MESSAGE_CREATE, async (message) => {
+client.on(Events.MessageCreate, async (message) => {
   //   if (!message.guild) return;
 
   const guild = client.guilds.cache.get(message.guildId!);
@@ -36,7 +37,7 @@ client.on(Events.MESSAGE_CREATE, async (message) => {
   }
 });
 
-client.on(Events.INTERACTION_CREATE, async (interaction: Interaction) => {
+client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   if (!interaction.isCommand() || !interaction.guildId) return;
 
   const handler = interactionHandlers.get(interaction.commandName);
@@ -56,6 +57,6 @@ client.on(Events.INTERACTION_CREATE, async (interaction: Interaction) => {
   }
 });
 
-client.on(Events.ERROR, console.warn);
+client.on(Events.Error, console.warn);
 
 void client.login(token);
