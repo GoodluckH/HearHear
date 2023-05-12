@@ -1,0 +1,6 @@
+{
+	"token": "Your Discord bot token here",
+	"s3-bucket-name": "MyBucketName",
+	"s3-object-key": "MyObjectKey",
+	"aws-region": "MyRegion"
+}
